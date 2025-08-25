@@ -403,7 +403,7 @@
                             'Authorization': `Bearer ${apiKey}`
                         };
                         body = JSON.stringify({
-                            model: 'llama-3.3-70b-versatile', // Updated to current Groq model
+                            model: 'llama-3.3-70b-versatile', // Updated to latest Groq model
                             messages: [
                                 { role: 'system', content: systemPrompt },
                                 { role: 'user', content: prompt }
@@ -699,7 +699,7 @@
                     setSlidePreview(slides);
                     
                     // Create presentation using PptxGenJS
-                    const pptx = new PptxGenJS();
+                    const pptx = new window.PptxGenJS();
                     
                     // Set presentation properties
                     pptx.author = 'Text to PowerPoint Generator';
@@ -846,7 +846,7 @@
                 if (slidePreview.length === 0) return;
                 
                 try {
-                    const pptx = new PptxGenJS();
+                    const pptx = new window.PptxGenJS();
                     
                     // Recreate the presentation from preview
                     slidePreview.forEach((slideData, index) => {
