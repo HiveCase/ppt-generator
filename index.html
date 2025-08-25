@@ -403,7 +403,7 @@
                             'Authorization': `Bearer ${apiKey}`
                         };
                         body = JSON.stringify({
-                            model: 'mixtral-8x7b-32768', // Fast and free with Groq
+                            model: 'llama-3.1-70b-versatile', // Updated to current Groq model
                             messages: [
                                 { role: 'system', content: systemPrompt },
                                 { role: 'user', content: prompt }
