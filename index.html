@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text to PowerPoint Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title .step-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+        }
+        
+        .textarea-wrapper, .input-wrapper {
+            position: relative;
+        }
+        
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        
+        textarea:focus, input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+        
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: #f5f5f5;
+            border: 2px dashed #d0d0d0;
+            border-radius: 10px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .file-upload-label:hover {
+            background: #efefef;
+            border-color: #667eea;
+        }
+        
+        .file-upload-label.has-file {
+            background: #e8f4fd;
+            border-color: #667eea;
+            border-style: solid;
+        }
+        
+        .api-key-section {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .api-provider {
+            flex: 0 0 200px;
+        }
+        
+        .api-key {
+            flex: 1;
+        }
+        
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #c00;
+        }
+        
+        .success-message {
+            background: #e6f7e6;
+            color: #2d6e2d;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #2d6e2d;
+        }
+        
+        .preview-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+        
+        .preview-slides {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .preview-slide {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .preview-slide-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .preview-slide-content {
+            font-size: 0.9em;
+            color: #666;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .optional-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .tone-select {
+            margin-top: 10px;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1em;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useRef, useCallback } = React;
+        
+        function App() {
+            const [inputText, setInputText] = useState('');
+            const [guidance, setGuidance] = useState('');
+            const [apiProvider, setApiProvider] = useState('openai');
+            const [apiKey, setApiKey] = useState('');
+            const [templateFile, setTemplateFile] = useState(null);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+            const [slidePreview, setSlidePreview] = useState([]);
+            const [generateSpeakerNotes, setGenerateSpeakerNotes] = useState(false);
+            const [tone, setTone] = useState('professional');
+            const fileInputRef = useRef(null);
+            
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (file && (file.name.endsWith('.pptx') || file.name.endsWith('.potx'))) {
+                    setTemplateFile(file);
+                    setError('');
+                } else {
+                    setError('Please upload a valid .pptx or .potx file');
+                    setTemplateFile(null);
+                }
+            };
+            
+            const callLLM = async (prompt, systemPrompt) => {
+                let apiUrl, headers, body;
+                
+                switch(apiProvider) {
+                    case 'openai':
+                        apiUrl = 'https://api.openai.com/v1/chat/completions';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            model: 'gpt-4-turbo-preview',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 4000
+                        });
+                        break;
+                        
+                    case 'anthropic':
+                        apiUrl = 'https://api.anthropic.com/v1/messages';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'x-api-key': apiKey,
+                            'anthropic-version': '2023-06-01'
+                        };
+                        body = JSON.stringify({
+                            model: 'claude-3-opus-20240229',
+                            messages: [
+                                { role: 'user', content: `${systemPrompt}\n\n${prompt}` }
+                            ],
+                            max_tokens: 4000
+                        });
+                        break;
+                        
+                    case 'gemini':
+                        apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                        headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        body = JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: `${systemPrompt}\n\n${prompt}`
+                                }]
+                            }]
+                        });
+                        break;
+                        
+                    default:
+                        throw new Error('Unsupported API provider');
+                }
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers,
+                    body
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Extract content based on provider
+                let content;
+                switch(apiProvider) {
+                    case 'openai':
+                        content = data.choices[0].message.content;
+                        break;
+                    case 'anthropic':
+                        content = data.content[0].text;
+                        break;
+                    case 'gemini':
+                        content = data.candidates[0].content.parts[0].text;
+                        break;
+                }
+                
+                return content;
+            };
+            
+            const generatePresentation = async () => {
+                if (!inputText || !apiKey) {
+                    setError('Please provide both text input and API key');
+                    return;
+                }
+                
+                setIsGenerating(true);
+                setError('');
+                setSuccess('');
+                setSlidePreview([]);
+                
+                try {
+                    // Prepare the system prompt
+                    const systemPrompt = `You are a presentation designer. Convert the provided text into a structured presentation outline.
+                    ${guidance ? `Additional guidance: ${guidance}` : ''}
+                    Tone: ${tone}
+                    
+                    Return a JSON array of slide objects. Each slide should have:
+                    - title: The slide title
+                    - content: Array of bullet points or paragraphs
+                    - layout: One of "title", "titleContent", "twoColumn", "comparison", "closing"
+                    ${generateSpeakerNotes ? '- speakerNotes: Notes for the presenter' : ''}
+                    
+                    Create an appropriate number of slides based on the content (typically 5-15 slides).
+                    Start with a title slide and end with a conclusion or thank you slide.
+                    Ensure the content is well-organized and follows a logical flow.
+                    
+                    IMPORTANT: Return ONLY valid JSON, no markdown formatting or extra text.`;
+                    
+                    // Call LLM to structure the content
+                    const llmResponse = await callLLM(inputText, systemPrompt);
+                    
+                    // Parse the JSON response
+                    let slides;
+                    try {
+                        // Clean the response in case it has markdown formatting
+                        const cleanedResponse = llmResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                        slides = JSON.parse(cleanedResponse);
+                    } catch (parseError) {
+                        console.error('Failed to parse LLM response:', llmResponse);
+                        throw new Error('Failed to parse presentation structure from AI response');
+                    }
+                    
+                    // Validate slides structure
+                    if (!Array.isArray(slides) || slides.length === 0) {
+                        throw new Error('Invalid presentation structure received from AI');
+                    }
+                    
+                    // Set preview
+                    setSlidePreview(slides);
+                    
+                    // Create presentation using PptxGenJS
+                    const pptx = new PptxGenJS();
+                    
+                    // Set presentation properties
+                    pptx.author = 'Text to PowerPoint Generator';
+                    pptx.company = 'Generated Presentation';
+                    pptx.subject = guidance || 'Auto-generated Presentation';
+                    pptx.title = slides[0]?.title || 'Presentation';
+                    
+                    // Apply template styling if available
+                    if (templateFile) {
+                        // Note: In a real implementation, you would parse the template file
+                        // to extract styles, colors, fonts, and layouts
+                        // This is a simplified version
+                        pptx.layout = 'LAYOUT_WIDE';
+                    }
+                    
+                    // Generate slides
+                    slides.forEach((slideData, index) => {
+                        const slide = pptx.addSlide();
+                        
+                        // Apply different layouts based on slide type
+                        if (index === 0 || slideData.layout === 'title') {
+                            // Title slide
+                            slide.addText(slideData.title, {
+                                x: 0.5,
+                                y: '40%',
+                                w: '90%',
+                                h: 1,
+                                fontSize: 44,
+                                bold: true,
+                                align: 'center',
+                                color: '363636'
+                            });
+                            
+                            if (slideData.content && slideData.content.length > 0) {
+                                slide.addText(slideData.content.join(' '), {
+                                    x: 1,
+                                    y: '60%',
+                                    w: '80%',
+                                    h: 1,
+                                    fontSize: 18,
+                                    align: 'center',
+                                    color: '666666'
+                                });
+                            }
+                        } else if (slideData.layout === 'twoColumn') {
+                            // Two column layout
+                            slide.addText(slideData.title, {
+                                x: 0.5,
+                                y: 0.5,
+                                w: '90%',
+                                h: 1,
+                                fontSize: 32,
+                                bold: true,
+                                color: '363636'
+                            });
+                            
+                            const midPoint = Math.ceil(slideData.content.length / 2);
+                            const leftContent = slideData.content.slice(0, midPoint);
+                            const rightContent = slideData.content.slice(midPoint);
+                            
+                            slide.addText(leftContent.map(item => `• ${item}`).join('\n'), {
+                                x: 0.5,
+                                y: 1.5,
+                                w: '42%',
+                                h: 4,
+                                fontSize: 16,
+                                color: '666666',
+                                valign: 'top'
+                            });
+                            
+                            slide.addText(rightContent.map(item => `• ${item}`).join('\n'), {
+                                x: '52%',
+                                y: 1.5,
+                                w: '42%',
+                                h: 4,
+                                fontSize: 16,
+                                color: '666666',
+                                valign: 'top'
+                            });
+                        } else {
+                            // Standard content slide
+                            slide.addText(slideData.title, {
+                                x: 0.5,
+                                y: 0.5,
+                                w: '90%',
+                                h: 1,
+                                fontSize: 32,
+                                bold: true,
+                                color: '363636'
+                            });
+                            
+                            if (slideData.content && slideData.content.length > 0) {
+                                const bulletPoints = slideData.content.map(item => 
+                                    typeof item === 'string' ? `• ${item}` : item
+                                ).join('\n\n');
+                                
+                                slide.addText(bulletPoints, {
+                                    x: 0.5,
+                                    y: 1.5,
+                                    w: '90%',
+                                    h: 4.5,
+                                    fontSize: 18,
+                                    color: '666666',
+                                    valign: 'top',
+                                    lineSpacing: 28
+                                });
+                            }
+                        }
+                        
+                        // Add speaker notes if generated
+                        if (slideData.speakerNotes) {
+                            slide.addNotes(slideData.speakerNotes);
+                        }
+                        
+                        // Add slide number
+                        if (index > 0) {
+                            slide.addText(`${index + 1}`, {
+                                x: '95%',
+                                y: '95%',
+                                w: 0.5,
+                                h: 0.3,
+                                fontSize: 10,
+                                color: '999999',
+                                align: 'center'
+                            });
+                        }
+                    });
+                    
+                    // Save the presentation
+                    const fileName = `presentation_${Date.now()}.pptx`;
+                    await pptx.writeFile({ fileName });
+                    
+                    setSuccess(`Presentation generated successfully! File "${fileName}" has been downloaded.`);
+                    
+                } catch (err) {
+                    console.error('Generation error:', err);
+                    setError(`Failed to generate presentation: ${err.message}`);
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+            
+            const downloadPresentation = async () => {
+                if (slidePreview.length === 0) return;
+                
+                try {
+                    const pptx = new PptxGenJS();
+                    
+                    // Recreate the presentation from preview
+                    slidePreview.forEach((slideData, index) => {
+                        const slide = pptx.addSlide();
+                        
+                        slide.addText(slideData.title, {
+                            x: 0.5,
+                            y: 0.5,
+                            w: '90%',
+                            h: 1,
+                            fontSize: index === 0 ? 44 : 32,
+                            bold: true,
+                            align: index === 0 ? 'center' : 'left',
+                            color: '363636'
+                        });
+                        
+                        if (slideData.content && slideData.content.length > 0) {
+                            const content = slideData.content.map(item => `• ${item}`).join('\n\n');
+                            slide.addText(content, {
+                                x: 0.5,
+                                y: index === 0 ? '60%' : 1.5,
+                                w: '90%',
+                                h: 4,
+                                fontSize: index === 0 ? 18 : 16,
+                                align: index === 0 ? 'center' : 'left',
+                                color: '666666',
+                                valign: 'top'
+                            });
+                        }
+                        
+                        if (slideData.speakerNotes) {
+                            slide.addNotes(slideData.speakerNotes);
+                        }
+                    });
+                    
+                    const fileName = `presentation_${Date.now()}.pptx`;
+                    await pptx.writeFile({ fileName });
+                    
+                } catch (err) {
+                    setError(`Failed to download presentation: ${err.message}`);
+                }
+            };
+            
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>📊 Text to PowerPoint Generator</h1>
+                        <p>Transform your text into professional presentations instantly</p>
+                    </div>
+                    
+                    <div className="main-content">
+                        <div className="section">
+                            <h2 className="section-title">
+                                <span className="step-number">1</span>
+                                Input Your Content
+                            </h2>
+                            <div className="textarea-wrapper">
+                                <textarea
+                                    value={inputText}
+                                    onChange={(e) => setInputText(e.target.value)}
+                                    placeholder="Paste your text here... (Markdown supported)"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="section">
+                            <h2 className="section-title">
+                                <span className="step-number">2</span>
+                                Guidance (Optional)
+                            </h2>
+                            <div className="input-wrapper">
+                                <input
+                                    type="text"
+                                    value={guidance}
+                                    onChange={(e) => setGuidance(e.target.value)}
+                                    placeholder="e.g., 'Turn into an investor pitch deck' or 'Create a technical presentation'"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="section">
+                            <h2 className="section-title">
+                                <span className="step-number">3</span>
+                                API Configuration
+                            </h2>
+                            <div className="api-key-section">
+                                <div className="api-provider">
+                                    <select
+                                        value={apiProvider}
+                                        onChange={(e) => setApiProvider(e.target.value)}
+                                    >
+                                        <option value="openai">OpenAI</option>
+                                        <option value="anthropic">Anthropic</option>
+                                        <option value="gemini">Google Gemini</option>
+                                    </select>
+                                </div>
+                                <div className="api-key">
+                                    <input
+                                        type="text"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        placeholder={`Enter your ${apiProvider === 'openai' ? 'OpenAI' : apiProvider === 'anthropic' ? 'Anthropic' : 'Gemini'} API key`}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="section">
+                            <h2 className="section-title">
+                                <span className="step-number">4</span>
+                                Upload Template (Optional)
+                            </h2>
+                            <div className="file-upload">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                    accept=".pptx,.potx"
+                                    id="file-upload"
+                                />
+                                <label 
+                                    htmlFor="file-upload" 
+                                    className={`file-upload-label ${templateFile ? 'has-file' : ''}`}
+                                >
+                                    <span>📁</span>
+                                    <span>
+                                        {templateFile 
+                                            ? `Selected: ${templateFile.name}` 
+                                            : 'Click to upload .pptx or .potx template'}
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div className="optional-section">
+                            <h3>Additional Options</h3>
+                            <div className="checkbox-group">
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={generateSpeakerNotes}
+                                        onChange={(e) => setGenerateSpeakerNotes(e.target.checked)}
+                                    />
+                                    <span>Generate speaker notes</span>
+                                </label>
+                            </div>
+                            <div className="tone-select">
+                                <label>Presentation tone:</label>
+                                <select
+                                    value={tone}
+                                    onChange={(e) => setTone(e.target.value)}
+                                    style={{ marginLeft: '10px' }}
+                                >
+                                    <option value="professional">Professional</option>
+                                    <option value="casual">Casual</option>
+                                    <option value="academic">Academic</option>
+                                    <option value="sales">Sales Pitch</option>
+                                    <option value="technical">Technical</option>
+                                    <option value="creative">Creative</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button
+                            className="generate-btn"
+                            onClick={generatePresentation}
+                            disabled={isGenerating || !inputText || !apiKey}
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <span className="loader"></span>
+                                    Generating Presentation...
+                                </>
+                            ) : (
+                                <>
+                                    <span>🎯</span>
+                                    Generate Presentation
+                                </>
+                            )}
+                        </button>
+                        
+                        {error && (
+                            <div className="error-message">
+                                ⚠️ {error}
+                            </div>
+                        )}
+                        
+                        {success && (
+                            <div className="success-message">
+                                ✅ {success}
+                            </div>
+                        )}
+                        
+                        {slidePreview.length > 0 && (
+                            <div className="preview-section">
+                                <h3>Presentation Preview</h3>
+                                <div className="preview-slides">
+                                    {slidePreview.map((slide, index) => (
+                                        <div key={index} className="preview-slide">
+                                            <div className="preview-slide-title">
+                                                Slide {index + 1}: {slide.title}
+                                            </div>
+                                            <div className="preview-slide-content">
+                                                {slide.content && slide.content.slice(0, 3).join(' • ')}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button className="download-btn" onClick={downloadPresentation}>
+                                    <span>💾</span>
+                                    Download Presentation
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
