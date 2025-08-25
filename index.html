@@ -319,6 +319,7 @@
             const [customEndpoint, setCustomEndpoint] = useState('');
             const [customModel, setCustomModel] = useState('');
             const [templateFile, setTemplateFile] = useState(null);
+            const [useCorsProxy, setUseCorsProxy] = useState(false);
             const [isGenerating, setIsGenerating] = useState(false);
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
@@ -413,12 +414,13 @@
                         break;
                         
                     case 'nvidia':
-                        apiUrl = 'https://api.nvcf.nvidia.com/v2/nvcf/pexec/functions/nvidia/llama3-70b-instruct/chat/completions';
+                        apiUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
                         headers = {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${apiKey}`
                         };
                         body = JSON.stringify({
+                            model: 'meta/llama3-8b-instruct',
                             messages: [
                                 { role: 'system', content: systemPrompt },
                                 { role: 'user', content: prompt }
@@ -555,7 +557,15 @@
                 
                 try {
                     console.log('Making API request to:', apiProvider);
-                    const response = await fetch(apiUrl, {
+                    
+                    // Add CORS proxy if enabled
+                    let finalUrl = apiUrl;
+                    if (useCorsProxy && !apiUrl.includes('localhost')) {
+                        finalUrl = `https://cors-anywhere.herokuapp.com/${apiUrl}`;
+                        console.log('Using CORS proxy:', finalUrl);
+                    }
+                    
+                    const response = await fetch(finalUrl, {
                         method: 'POST',
                         headers,
                         body
@@ -1001,6 +1011,53 @@
                                 {apiProvider === 'custom' && (
                                     <span>💡 Use any OpenAI-compatible API endpoint (Ollama, LM Studio, vLLM, etc.)</span>
                                 )}
+                            </div>
+                            
+                            <div style={{ 
+                                marginTop: '15px', 
+                                padding: '15px', 
+                                background: '#fff3cd', 
+                                border: '1px solid #ffc107',
+                                borderRadius: '8px',
+                                fontSize: '0.9em'
+                            }}>
+                                <strong>⚠️ Running locally?</strong> If you're opening this HTML file directly, you'll encounter CORS errors. 
+                                <div style={{ marginTop: '8px' }}>
+                                    <strong>Solutions:</strong>
+                                    <ol style={{ marginLeft: '20px', marginTop: '5px' }}>
+                                        <li><strong>Recommended:</strong> Use a local web server:
+                                            <code style={{ 
+                                                display: 'block', 
+                                                background: '#f0f0f0', 
+                                                padding: '5px', 
+                                                marginTop: '3px',
+                                                borderRadius: '4px'
+                                            }}>python -m http.server 8000</code>
+                                            Then open <code>http://localhost:8000</code>
+                                        </li>
+                                        <li><strong>Deploy online:</strong> Upload to GitHub Pages, Netlify, or Vercel (free)</li>
+                                        <li><strong>Use local models:</strong> Select "Custom Endpoint" and use Ollama:
+                                            <code style={{ 
+                                                display: 'block', 
+                                                background: '#f0f0f0', 
+                                                padding: '5px', 
+                                                marginTop: '3px',
+                                                borderRadius: '4px'
+                                            }}>ollama run llama3</code>
+                                            Endpoint: <code>http://localhost:11434/v1/chat/completions</code>
+                                        </li>
+                                    </ol>
+                                </div>
+                                <div style={{ marginTop: '10px' }}>
+                                    <label className="checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={useCorsProxy}
+                                            onChange={(e) => setUseCorsProxy(e.target.checked)}
+                                        />
+                                        <span>Try using CORS proxy (may be unreliable)</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         
