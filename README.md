@@ -14,12 +14,12 @@ Transform your text, markdown, or prose into professionally formatted PowerPoint
 ## 🔧 Setup & Installation
 
 ### Option 1: Use Hosted Version
-Visit [your-deployed-url-here] to use the app directly.
+Visit <a href='https://hivecase.github.io/ppt-generator/'>here</a> to use the app directly.
 
 ### Option 2: Run Locally
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/text-to-powerpoint.git
+git clone https://github.com/HiveCase/ppt-generator.git
 cd text-to-powerpoint
 ```
 
