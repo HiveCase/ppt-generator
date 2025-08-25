@@ -316,6 +316,8 @@
             const [guidance, setGuidance] = useState('');
             const [apiProvider, setApiProvider] = useState('openai');
             const [apiKey, setApiKey] = useState('');
+            const [customEndpoint, setCustomEndpoint] = useState('');
+            const [customModel, setCustomModel] = useState('');
             const [templateFile, setTemplateFile] = useState(null);
             const [isGenerating, setIsGenerating] = useState(false);
             const [error, setError] = useState('');
@@ -339,6 +341,12 @@
             const callLLM = async (prompt, systemPrompt) => {
                 let apiUrl, headers, body;
                 
+                // Validate API key for providers that require it
+                const providersRequiringKey = ['openai', 'anthropic', 'gemini', 'groq', 'nvidia', 'cohere', 'mistral', 'perplexity', 'together', 'deepinfra'];
+                if (providersRequiringKey.includes(apiProvider) && (!apiKey || apiKey.trim() === '')) {
+                    throw new Error('API key is required for this provider');
+                }
+                
                 switch(apiProvider) {
                     case 'openai':
                         apiUrl = 'https://api.openai.com/v1/chat/completions';
@@ -347,13 +355,13 @@
                             'Authorization': `Bearer ${apiKey}`
                         };
                         body = JSON.stringify({
-                            model: 'gpt-4-turbo-preview',
+                            model: 'gpt-3.5-turbo',
                             messages: [
                                 { role: 'system', content: systemPrompt },
                                 { role: 'user', content: prompt }
                             ],
                             temperature: 0.7,
-                            max_tokens: 4000
+                            max_tokens: 2000
                         });
                         break;
                         
@@ -365,11 +373,11 @@
                             'anthropic-version': '2023-06-01'
                         };
                         body = JSON.stringify({
-                            model: 'claude-3-opus-20240229',
+                            model: 'claude-3-haiku-20240307', // Most affordable Claude model
                             messages: [
                                 { role: 'user', content: `${systemPrompt}\n\n${prompt}` }
                             ],
-                            max_tokens: 4000
+                            max_tokens: 2000
                         });
                         break;
                         
@@ -387,37 +395,246 @@
                         });
                         break;
                         
+                    case 'groq':
+                        apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            model: 'mixtral-8x7b-32768', // Fast and free with Groq
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
+                    case 'nvidia':
+                        apiUrl = 'https://api.nvcf.nvidia.com/v2/nvcf/pexec/functions/nvidia/llama3-70b-instruct/chat/completions';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
+                    case 'cohere':
+                        apiUrl = 'https://api.cohere.ai/v1/chat';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            message: `${systemPrompt}\n\n${prompt}`,
+                            model: 'command-light', // Free tier model
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
+                    case 'mistral':
+                        apiUrl = 'https://api.mistral.ai/v1/chat/completions';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            model: 'mistral-small-latest',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
+                    case 'perplexity':
+                        apiUrl = 'https://api.perplexity.ai/chat/completions';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            model: 'llama-3-sonar-small-32k-online',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
+                    case 'together':
+                        apiUrl = 'https://api.together.xyz/v1/chat/completions';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            model: 'meta-llama/Llama-3-8b-chat-hf',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
+                    case 'deepinfra':
+                        apiUrl = 'https://api.deepinfra.com/v1/openai/chat/completions';
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            model: 'meta-llama/Llama-3-8B-Instruct',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
+                    case 'huggingface':
+                        apiUrl = `https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct`;
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        };
+                        body = JSON.stringify({
+                            inputs: `${systemPrompt}\n\n${prompt}`,
+                            parameters: {
+                                temperature: 0.7,
+                                max_new_tokens: 2000,
+                                return_full_text: false
+                            }
+                        });
+                        break;
+                        
+                    case 'custom':
+                        if (!customEndpoint) {
+                            throw new Error('Custom endpoint URL is required');
+                        }
+                        apiUrl = customEndpoint;
+                        headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        if (apiKey) {
+                            headers['Authorization'] = `Bearer ${apiKey}`;
+                        }
+                        // OpenAI-compatible format for custom endpoints
+                        body = JSON.stringify({
+                            model: customModel || 'default',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        });
+                        break;
+                        
                     default:
                         throw new Error('Unsupported API provider');
                 }
                 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers,
-                    body
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`API request failed: ${response.statusText}`);
+                try {
+                    console.log('Making API request to:', apiProvider);
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers,
+                        body
+                    });
+                    
+                    const responseText = await response.text();
+                    console.log('API Response status:', response.status);
+                    
+                    if (!response.ok) {
+                        let errorMessage = `API request failed with status ${response.status}`;
+                        try {
+                            const errorData = JSON.parse(responseText);
+                            if (errorData.error) {
+                                errorMessage = errorData.error.message || errorData.error;
+                            } else if (errorData.message) {
+                                errorMessage = errorData.message;
+                            }
+                        } catch (e) {
+                            errorMessage += `: ${responseText.substring(0, 200)}`;
+                        }
+                        throw new Error(errorMessage);
+                    }
+                    
+                    const data = JSON.parse(responseText);
+                    
+                    // Extract content based on provider response format
+                    let content;
+                    switch(apiProvider) {
+                        case 'openai':
+                        case 'groq':
+                        case 'nvidia':
+                        case 'mistral':
+                        case 'perplexity':
+                        case 'together':
+                        case 'deepinfra':
+                        case 'custom':
+                            if (!data.choices || !data.choices[0]) {
+                                throw new Error('Invalid response format');
+                            }
+                            content = data.choices[0].message.content;
+                            break;
+                            
+                        case 'anthropic':
+                            if (!data.content || !data.content[0]) {
+                                throw new Error('Invalid Anthropic response format');
+                            }
+                            content = data.content[0].text;
+                            break;
+                            
+                        case 'gemini':
+                            if (!data.candidates || !data.candidates[0]) {
+                                throw new Error('Invalid Gemini response format');
+                            }
+                            content = data.candidates[0].content.parts[0].text;
+                            break;
+                            
+                        case 'cohere':
+                            if (!data.text) {
+                                throw new Error('Invalid Cohere response format');
+                            }
+                            content = data.text;
+                            break;
+                            
+                        case 'huggingface':
+                            if (Array.isArray(data) && data[0]?.generated_text) {
+                                content = data[0].generated_text;
+                            } else if (typeof data === 'string') {
+                                content = data;
+                            } else {
+                                throw new Error('Invalid HuggingFace response format');
+                            }
+                            break;
+                    }
+                    
+                    return content;
+                } catch (error) {
+                    console.error('API call error:', error);
+                    throw error;
                 }
-                
-                const data = await response.json();
-                
-                // Extract content based on provider
-                let content;
-                switch(apiProvider) {
-                    case 'openai':
-                        content = data.choices[0].message.content;
-                        break;
-                    case 'anthropic':
-                        content = data.content[0].text;
-                        break;
-                    case 'gemini':
-                        content = data.candidates[0].content.parts[0].text;
-                        break;
-                }
-                
-                return content;
             };
             
             const generatePresentation = async () => {
@@ -711,9 +928,26 @@
                                         value={apiProvider}
                                         onChange={(e) => setApiProvider(e.target.value)}
                                     >
-                                        <option value="openai">OpenAI</option>
-                                        <option value="anthropic">Anthropic</option>
-                                        <option value="gemini">Google Gemini</option>
+                                        <optgroup label="Popular Providers">
+                                            <option value="openai">OpenAI (GPT)</option>
+                                            <option value="anthropic">Anthropic (Claude)</option>
+                                            <option value="gemini">Google Gemini</option>
+                                        </optgroup>
+                                        <optgroup label="Fast & Free Options">
+                                            <option value="groq">Groq (Free Tier)</option>
+                                            <option value="together">Together AI</option>
+                                            <option value="deepinfra">DeepInfra</option>
+                                        </optgroup>
+                                        <optgroup label="Alternative Providers">
+                                            <option value="nvidia">NVIDIA NIM</option>
+                                            <option value="cohere">Cohere</option>
+                                            <option value="mistral">Mistral AI</option>
+                                            <option value="perplexity">Perplexity</option>
+                                            <option value="huggingface">HuggingFace</option>
+                                        </optgroup>
+                                        <optgroup label="Custom">
+                                            <option value="custom">Custom Endpoint</option>
+                                        </optgroup>
                                     </select>
                                 </div>
                                 <div className="api-key">
@@ -721,9 +955,52 @@
                                         type="text"
                                         value={apiKey}
                                         onChange={(e) => setApiKey(e.target.value)}
-                                        placeholder={`Enter your ${apiProvider === 'openai' ? 'OpenAI' : apiProvider === 'anthropic' ? 'Anthropic' : 'Gemini'} API key`}
+                                        placeholder={`Enter your ${
+                                            apiProvider === 'custom' ? 'API key (optional)' :
+                                            apiProvider === 'groq' ? 'Groq API key (free at groq.com)' :
+                                            apiProvider === 'together' ? 'Together API key ($25 free credit)' :
+                                            apiProvider === 'deepinfra' ? 'DeepInfra API key (free tier available)' :
+                                            apiProvider === 'huggingface' ? 'HuggingFace token (free)' :
+                                            apiProvider === 'nvidia' ? 'NVIDIA API key' :
+                                            `${apiProvider.charAt(0).toUpperCase() + apiProvider.slice(1)} API key`
+                                        }`}
                                     />
                                 </div>
+                            </div>
+                            {apiProvider === 'custom' && (
+                                <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                                    <input
+                                        type="text"
+                                        value={customEndpoint}
+                                        onChange={(e) => setCustomEndpoint(e.target.value)}
+                                        placeholder="Custom API endpoint URL (e.g., http://localhost:11434/v1/chat/completions)"
+                                        style={{ flex: 2 }}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={customModel}
+                                        onChange={(e) => setCustomModel(e.target.value)}
+                                        placeholder="Model name (optional)"
+                                        style={{ flex: 1 }}
+                                    />
+                                </div>
+                            )}
+                            <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>
+                                {apiProvider === 'groq' && (
+                                    <span>💡 Groq offers free, ultra-fast inference. Get your API key at <a href="https://console.groq.com" target="_blank" style={{ color: '#667eea' }}>console.groq.com</a></span>
+                                )}
+                                {apiProvider === 'together' && (
+                                    <span>💡 Together AI offers $25 free credit. Sign up at <a href="https://api.together.xyz" target="_blank" style={{ color: '#667eea' }}>api.together.xyz</a></span>
+                                )}
+                                {apiProvider === 'deepinfra' && (
+                                    <span>💡 DeepInfra has a generous free tier. Get started at <a href="https://deepinfra.com" target="_blank" style={{ color: '#667eea' }}>deepinfra.com</a></span>
+                                )}
+                                {apiProvider === 'huggingface' && (
+                                    <span>💡 HuggingFace offers free inference. Get token at <a href="https://huggingface.co/settings/tokens" target="_blank" style={{ color: '#667eea' }}>huggingface.co</a></span>
+                                )}
+                                {apiProvider === 'custom' && (
+                                    <span>💡 Use any OpenAI-compatible API endpoint (Ollama, LM Studio, vLLM, etc.)</span>
+                                )}
                             </div>
                         </div>
                         
@@ -803,7 +1080,23 @@
                         
                         {error && (
                             <div className="error-message">
-                                ⚠️ {error}
+                                <strong>⚠️ Error:</strong> {error}
+                                <div style={{ marginTop: '10px', fontSize: '0.9em' }}>
+                                    <strong>Troubleshooting tips:</strong>
+                                    <ul style={{ marginLeft: '20px', marginTop: '5px' }}>
+                                        <li>Verify your API key is correct and active</li>
+                                        <li>Check if you have API credits/quota remaining</li>
+                                        {apiProvider === 'openai' && <li>For OpenAI: Ensure your key starts with "sk-"</li>}
+                                        {apiProvider === 'anthropic' && <li>For Anthropic: Check you have access to Claude API</li>}
+                                        {apiProvider === 'gemini' && <li>For Gemini: Ensure API key is enabled for Gemini Pro</li>}
+                                        {apiProvider === 'groq' && <li>For Groq: Free tier has rate limits, wait a moment and retry</li>}
+                                        {apiProvider === 'huggingface' && <li>For HuggingFace: Model might be loading, retry in 20 seconds</li>}
+                                        {apiProvider === 'custom' && <li>For Custom: Ensure your endpoint is running and accessible</li>}
+                                        <li>Try using a different API provider</li>
+                                        <li>Check browser console (F12) for detailed error messages</li>
+                                        <li>CORS issues? Try deploying the app or using a CORS proxy</li>
+                                    </ul>
+                                </div>
                             </div>
                         )}
                         
